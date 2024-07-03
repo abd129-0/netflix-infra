@@ -7,21 +7,37 @@ pipeline {
         string(name: 'SERVICE_NAME', defaultValue: '', description: '')
         string(name: 'IMAGE_FULL_NAME_PARAM', defaultValue: '', description: '')
     }
+    environment {
+        GITHUB_TOKEN = credentials('fe1ad36c-199b-49db-893a-38b60eb82288')
+    }
 
     stages {
         stage('Deploy') {
             steps {
-                /*
+                sh '''
 
-                Now your turn! implement the pipeline steps ...
+                      cd $SERVICE_NAME
+                      # Replace the image name in the deployment YAML file
+                      sed -i "s|image:.*|image: ${IMAGE_FULL_NAME_PARAM}|g" k8s/netflix-frontend.yaml
 
-                - `cd` into the directory corresponding to the SERVICE_NAME variable.
-                - Change the YAML manifests according to the new $IMAGE_FULL_NAME_PARAM parameter.
-                  You can do so using `yq` or `sed` command, by a simple Python script, or any other method.
-                - Commit the changes, push them to GitHub.
-                   * Setting global Git user.name and user.email in 'Manage Jenkins > System' is recommended.
-                   * Setting Shell executable to `/bin/bash` in 'Manage Jenkins > System' is recommended.
-                */
+                      # Print the updated deployment YAML to verify the change
+                      echo "Updated deploymentFront.yaml:"
+                      cat k8s/NetflixFronted/deploymentFront.yaml
+                    '''
+
+                    // Commit the changes
+                    sh '''
+                      git config --global user.email "jenkins@example.com"
+                      git config --global user.name "Jenkins"
+                      TOKEN = "${GITHUB_TOKEN_PSW}"
+                      git remote set-url origin https://${TOKEN}@github.com/abd129-0/netflix-infra.git
+
+
+                      git add k8s/netflix-frontend/netflix-frontend.yaml
+                      git commit -m "Update deployment image to ${IMAGE_FULL_NAME_PARAM}"
+                      git push origin HEAD:main
+                    '''
+
             }
         }
     }
