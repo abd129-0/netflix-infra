@@ -2,42 +2,37 @@ pipeline {
     agent {
         label 'general'
     }
-
     parameters {
-        string(name: 'SERVICE_NAME', defaultValue: '', description: '')
-        string(name: 'IMAGE_FULL_NAME_PARAM', defaultValue: '', description: '')
-    }
-    environment {
-        GITHUB_TOKEN = credentials('fe1ad36c-199b-49db-893a-38b60eb82288')
+        string(name: 'SERVICE_NAME', defaultValue: '', description: 'The name of the service to deploy')
+        string(name: 'IMAGE_FULL_NAME_PARAM', defaultValue: '', description: 'The full Docker image name to deploy')
     }
 
     stages {
         stage('Deploy') {
             steps {
-                sh '''
+                script {
+                    // Change to the directory containing the deployment YAML
+                    dir("k8s/netflix-frontend") {
+                        // Update the image in the deployment YAML using sed
+                        sh """
+                            sed -i 's|image: .*|image: ${IMAGE_FULL_NAME_PARAM}|' deployment-netflix-frontend.yaml
 
-                      cd $SERVICE_NAME
-                      # Replace the image name in the deployment YAML file
-                      sed -i "s|image:.*|image: ${IMAGE_FULL_NAME_PARAM}|g" k8s/netflix-frontend.yaml
+                            # Verify the changes
+                            cat deployment-netflix-frontend.yaml
+                        """
 
-                      # Print the updated deployment YAML to verify the change
-                      echo "Updated deploymentFront.yaml:"
-                      cat k8s/NetflixFronted/deploymentFront.yaml
-                    '''
-
-                    // Commit the changes
-                    sh '''
-                      git config --global user.email "jenkins@example.com"
-                      git config --global user.name "Jenkins"
-                      TOKEN = "${GITHUB_TOKEN_PSW}"
-                      git remote set-url origin https://${TOKEN}@github.com/abd129-0/netflix-infra.git
-
-
-                      git add k8s/netflix-frontend/netflix-frontend.yaml
-                      git commit -m "Update deployment image to ${IMAGE_FULL_NAME_PARAM}"
-                      git push origin HEAD:main
-                    '''
-
+                        // Commit and push the changes
+                        withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                            sh """
+                                git config --global user.name "abd129-0"
+                                git config --global user.email "assiabd@post.bgu.ac.il"
+                                git add deployment-netflix-frontend.yaml
+                                git commit -m 'Update image to ${IMAGE_FULL_NAME_PARAM}'
+                                git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/abd129-0/netflix-infra.git HEAD:main
+                            """
+                        }
+                    }
+                }
             }
         }
     }
